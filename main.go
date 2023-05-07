@@ -9,7 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -47,16 +47,12 @@ func fetchCert(context *gin.Context) {
 	}
 	clientCertPEM, clientCertPrivKeyPEM, _, _ := createAndSign(clientCert, ca, caPrivKey)
 	data := gin.H{
-		"crt": string(clientCertPEM.Bytes()),
-		"key": string(clientCertPrivKeyPEM.Bytes()),
-		"ca":  string(caPEMByte.Bytes()),
+		"crt": clientCertPEM.String(),
+		"key": clientCertPrivKeyPEM.String(),
+		"ca":  caPEMByte.String(),
 	}
 
 	context.JSONP(http.StatusOK, data)
-}
-
-func main1() {
-	genP12()
 }
 
 func main() {
@@ -93,7 +89,7 @@ func main() {
 	}
 
 	// verify the response
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -177,49 +173,6 @@ func createAndSign(
 
 	pCertBytes = &certBytes
 	pKeyByte = &keyByte
-
-	return
-}
-
-func genP12() {
-	var ca *x509.Certificate
-	caPEMByte, err1 := os.ReadFile("ca.crt")
-	caPKPEMByte, err2 := os.ReadFile("ca.key")
-	var caPrivKeyPEM *bytes.Buffer
-	var caPrivKey *rsa.PrivateKey
-	if err1 != nil && err2 != nil {
-		ca = &x509.Certificate{
-			SerialNumber: big.NewInt(2019),
-			Subject: pkix.Name{
-				Organization:  []string{"CA Nanking, INC."},
-				CommonName:    "ca-nanking.org",
-				Country:       []string{"CN"},
-				Province:      []string{"JS"},
-				Locality:      []string{"Nanking"},
-				StreetAddress: []string{"Ruanjiandadao Street 101"},
-				PostalCode:    []string{"210012"},
-			},
-			NotBefore:             time.Now(),
-			NotAfter:              time.Now().AddDate(10, 0, 0),
-			IsCA:                  true,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-			BasicConstraintsValid: true,
-		}
-
-		_, caPrivKeyPEM, _, _, caPrivKey = createCA(ca, nil)
-
-	} else {
-		caPKBlock, _ := pem.Decode(caPKPEMByte)
-		caBlock, _ := pem.Decode(caPEMByte)
-		caPrivKey, _ = x509.ParsePKCS1PrivateKey(caPKBlock.Bytes)
-		caPrivKeyPEM = new(bytes.Buffer)
-		caPrivKeyPEM.Write(caPKPEMByte)
-		ca, _ = x509.ParseCertificate(caBlock.Bytes)
-	}
-
-	p12Data, _ := pkcs12.Encode(rand.Reader, caPrivKey, ca, []*x509.Certificate{ca}, "000000")
-	os.WriteFile("cab.p12", p12Data, 0666)
 
 	return
 }
