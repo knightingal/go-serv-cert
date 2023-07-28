@@ -74,15 +74,17 @@ func main() {
 	}
 	go s8082.ListenAndServeTLS("", "")
 
+	handle8081 := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "success!")
+	})
+
 	s8081 := &http.Server{
-		Addr: ":8081",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "success!")
-		}),
+		Addr:           ":8081",
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 		TLSConfig:      serverTLSConf,
+		Handler:        handle8081,
 	}
 	go s8081.ListenAndServeTLS("", "")
 
