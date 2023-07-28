@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"time"
@@ -59,22 +58,33 @@ func main() {
 	router := gin.Default()
 	router.GET("/go-fetch-cert", fetchCert)
 
-	go router.Run(":8082")
 	// get our ca and server certificate
 	serverTLSConf, clientTLSConf, err := certsetup()
 	if err != nil {
 		panic(err)
 	}
 
-	// set up the httptest.Server using our certificate signed by our CA
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "success!")
-	}))
-	listner, _ := net.Listen("tcp", ":8081")
-	server.Listener = listner
-	server.TLS = serverTLSConf
-	server.StartTLS()
-	defer server.Close()
+	s8082 := &http.Server{
+		Addr:           ":8082",
+		Handler:        router,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+		TLSConfig:      serverTLSConf,
+	}
+	go s8082.ListenAndServeTLS("", "")
+
+	s8081 := &http.Server{
+		Addr: ":8081",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "success!")
+		}),
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+		TLSConfig:      serverTLSConf,
+	}
+	go s8081.ListenAndServeTLS("", "")
 
 	// communicate with the server using an http.Client configured to trust our CA
 	transport := &http.Transport{
