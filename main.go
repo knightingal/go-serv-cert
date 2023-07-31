@@ -108,7 +108,7 @@ func main() {
 	body := strings.TrimSpace(string(respBodyBytes[:]))
 	fmt.Println(body)
 	c := make(chan int)
-	_ = <-c
+	<-c
 
 }
 
