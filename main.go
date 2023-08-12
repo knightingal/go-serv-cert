@@ -87,6 +87,14 @@ func main() {
 		Handler:        handle8081,
 	}
 	go s8081.ListenAndServeTLS("", "")
+	s8083 := &http.Server{
+		Addr:           ":8083",
+		ReadTimeout:    60 * time.Second,
+		WriteTimeout:   60 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+		Handler:        handle8081,
+	}
+	go s8083.ListenAndServe()
 
 	// communicate with the server using an http.Client configured to trust our CA
 	transport := &http.Transport{
@@ -356,14 +364,14 @@ func certsetup() (serverTLSConf *tls.Config, clientTLSConf *tls.Config, err erro
 
 	serverTLSConf = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certpool,
+		// ClientAuth:   tls.RequireAndVerifyClientCert,
+		// ClientCAs:    certpool,
 	}
 
-	clientCertPair, err := tls.X509KeyPair(clientCertPEM.Bytes(), clientCertPrivKeyPEM.Bytes())
+	// clientCertPair, err := tls.X509KeyPair(clientCertPEM.Bytes(), clientCertPrivKeyPEM.Bytes())
 	clientTLSConf = &tls.Config{
-		Certificates: []tls.Certificate{clientCertPair},
-		RootCAs:      certpool,
+		// Certificates: []tls.Certificate{clientCertPair},
+		RootCAs: certpool,
 	}
 
 	return
